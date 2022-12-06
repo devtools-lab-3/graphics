@@ -7,6 +7,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.Serialization;
+using cg22_model.Models.ColorSpacesSpaces;
 
 namespace cg22_model.Models
 {
@@ -20,25 +21,21 @@ namespace cg22_model.Models
         /// Returns bitmap representation of picture
         /// </summary>
         /// <param name="path"> Path to file </param>
+        /// <param name="colorSpace"> Current color space </param>
         /// <returns> Bitmap representation of picture </returns>
-        public Bitmap OpenFile(string path)
+        public FloatImage OpenFile(string path, IColorSpace colorSpace)
         {
             var fStream = new FileStream(path, FileMode.Open);
             var binReader = new BinaryReader(fStream);
-            var bitmap = new Bitmap(1, 1);
+            FloatImage floatImage = null;
             try
             {
                 char magic = binReader.ReadChar();
                 char number = binReader.ReadChar();
                 string magicNumber = new string(new char[] {magic, number});
-                bitmap.Dispose();
-                bitmap = SignatureChecker.CheckSignature(magicNumber).GetBitmap(binReader);
-                var prop = (PropertyItem)FormatterServices.GetUninitializedObject(typeof(PropertyItem));
-                prop.Id = 4096;
-                prop.Len = 2;
-                prop.Type = 2;
-                prop.Value = new byte[] {(byte)magicNumber[0], (byte)magicNumber[1]};
-                bitmap.SetPropertyItem(prop);
+                var image = SignatureChecker.CheckSignature(magicNumber).GetFloatImage(binReader);
+                image = colorSpace.ScaleFrom256(image);
+                floatImage = new FloatImage(magicNumber, colorSpace, image);
             }
             catch (Exception e)
             {
@@ -49,15 +46,17 @@ namespace cg22_model.Models
                 fStream.Dispose();
                 binReader.Dispose();
             }
-            return bitmap;
+
+            return floatImage;
         }
 
-        public void SaveAs(string filename, string magicNumber, Bitmap bitmap)
+        public void SaveAs(string filename, FloatImage floatImage)
         {
             BinaryWriter binWriter = new BinaryWriter(File.Create(filename));
+
             try
             {
-                SignatureChecker.CheckSignature(magicNumber).SaveAs(binWriter, bitmap);
+                SignatureChecker.CheckSignature(floatImage.FileMagicNumber).SaveAs(binWriter, floatImage.ColorSpace.ScaleTo256(floatImage.Image));
             }
             finally
             {
