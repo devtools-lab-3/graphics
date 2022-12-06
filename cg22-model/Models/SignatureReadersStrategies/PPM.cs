@@ -16,7 +16,7 @@ namespace cg22_model.Models.SignatureReadersStrategies
         /// </summary>
         /// <param name="binReader"> BinaryReader of picture file </param>
         /// <returns> Bitmap representation of picture </returns>
-        public Bitmap GetBitmap(BinaryReader binReader)
+        public FloatPixel[,] GetFloatImage(BinaryReader binReader)
         {
             int width = 0;
             int height = 0;
@@ -78,7 +78,7 @@ namespace cg22_model.Models.SignatureReadersStrategies
             }
             maxVal = Convert.ToInt32(sb.ToString());
 
-            Bitmap bitmap = new Bitmap(width, height);
+            FloatPixel[,] image = new FloatPixel[width, height];
 
             for (int y = 0; y < height; y++)
             {
@@ -104,17 +104,19 @@ namespace cg22_model.Models.SignatureReadersStrategies
                         throw new IndexOutOfRangeException("Color bigger than maxVal");
                     }
 
-                    bitmap.SetPixel(x, y, Color.FromArgb(255, r, g, b));
+                    image[x, y] = new FloatPixel(r, g, b);
                 }
             }
 
-            return bitmap;
+            return image;
         }
 
-        public void SaveAs(BinaryWriter binWriter, Bitmap bitmap)
+        public void SaveAs(BinaryWriter binWriter, FloatPixel[,] image)
         {
-            char[] width = Convert.ToString(bitmap.Width).ToCharArray();
-            char[] height = Convert.ToString(bitmap.Height).ToCharArray();
+            int intWidth = image.GetUpperBound(0) + 1;
+            int intHeight = image.GetUpperBound(1) + 1;
+            char[] width = Convert.ToString(intWidth).ToCharArray();
+            char[] height = Convert.ToString(intHeight).ToCharArray();
             char[] maxVal = new char[] {'2', '5', '5'};
 
             binWriter.Write('P');
@@ -139,14 +141,14 @@ namespace cg22_model.Models.SignatureReadersStrategies
             }
 
             binWriter.Write(' ');
-            for (int y = 0; y < bitmap.Height; y++)
+            for (int y = 0; y < intHeight; y++)
             {
-                for (int x = 0; x < bitmap.Width; x++)
+                for (int x = 0; x < intWidth; x++)
                 {
-                    var color = bitmap.GetPixel(x, y);
-                    binWriter.Write(color.R);
-                    binWriter.Write(color.G);
-                    binWriter.Write(color.B);
+                    var color = image[x, y];
+                    binWriter.Write(Convert.ToByte(Convert.ToInt32(Math.Round(color.Component1))));
+                    binWriter.Write(Convert.ToByte(Convert.ToInt32(Math.Round(color.Component2))));
+                    binWriter.Write(Convert.ToByte(Convert.ToInt32(Math.Round(color.Component3))));
                 }
             }
         }
